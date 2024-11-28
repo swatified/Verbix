@@ -154,14 +154,14 @@ public class PracticeWritingActivity extends AppCompatActivity {
             if (i < target.length() && recognized.charAt(i) == target.charAt(i)) {
                 // Correct letter - green
                 spannableString.setSpan(
-                        new ForegroundColorSpan(Color.GREEN),
+                        new ForegroundColorSpan(Color.parseColor("#228B22")),
                         position, position + 1,
                         Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
                 );
             } else {
                 // Incorrect letter - red
                 spannableString.setSpan(
-                        new ForegroundColorSpan(Color.RED),
+                        new ForegroundColorSpan(Color.parseColor("#B22222")),
                         position, position + 1,
                         Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
                 );
