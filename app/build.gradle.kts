@@ -42,6 +42,8 @@ dependencies {
     implementation ("com.github.bumptech.glide:glide:4.16.0")
     implementation ("com.google.android.gms:play-services-mlkit-text-recognition:17.0.1")
     implementation("com.google.firebase:firebase-firestore:24.6.0")
+    implementation("com.google.mlkit:digital-ink-recognition:18.1.0")
+    implementation("com.google.mlkit:common:18.10.0")
 
 
     implementation(libs.appcompat)
