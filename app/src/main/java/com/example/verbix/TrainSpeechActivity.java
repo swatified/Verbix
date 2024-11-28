@@ -200,18 +200,29 @@ public class TrainSpeechActivity extends AppCompatActivity {
     }
 
     private void compareAndHighlight(String spokenText) {
-        String word = wordTextView.getText().toString();
-        SpannableString spannableString = new SpannableString(word);
+        String targetWord = wordTextView.getText().toString();  // Keep original case
+        spokenText = spokenText.substring(0, 1).toUpperCase() + spokenText.substring(1).toLowerCase();
 
-        for (int i = 0; i < word.length(); i++) {
-            if (i >= spokenText.length() || word.charAt(i) != spokenText.charAt(i)) {
-                spannableString.setSpan(new ForegroundColorSpan(Color.RED), i, i + 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        SpannableString spannableString = new SpannableString(spokenText);
+
+        for (int i = 0; i < spokenText.length(); i++) {
+            if (i < targetWord.length() && spokenText.charAt(i) == targetWord.charAt(i)) {
+                spannableString.setSpan(
+                        new ForegroundColorSpan(Color.parseColor("#228B22")),
+                        i, i + 1,
+                        Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                );
+            } else {
+                spannableString.setSpan(
+                        new ForegroundColorSpan(Color.parseColor("#DC143C")),
+                        i, i + 1,
+                        Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                );
             }
         }
 
         highlightedTextView.setText(spannableString);
     }
-
     @Override
     protected void onDestroy() {
         super.onDestroy();

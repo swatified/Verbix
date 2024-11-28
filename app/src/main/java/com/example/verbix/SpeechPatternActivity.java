@@ -234,7 +234,12 @@ public class SpeechPatternActivity extends AppCompatActivity {
         if (!mistakes.isEmpty()) {
             resultBuilder.append("Word Mistakes:\n");
             for (String mistake : mistakes) {
-                resultBuilder.append("• ").append(mistake).append("\n");
+                String[] parts = mistake.split(" → ");
+                // Swap the order and skip if they're the same
+                if (!parts[0].equals(parts[1].replace(".", ""))) {
+                    resultBuilder.append("• ").append(parts[1].replace(".", ""))
+                            .append(" → ").append(parts[0]).append("\n");
+                }
             }
             resultBuilder.append("\n");
         }
