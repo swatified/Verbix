@@ -18,34 +18,31 @@ import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.AnimationUtils;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
+import com.google.firebase.auth.FirebaseAuth;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 public class SplashActivity extends AppCompatActivity {
 
-    private ImageView mascotImage;
-    private ImageView verbixLogo;
+    private ImageView mascotImage,verbixLogo;
     private ProgressBar loading;
+    private FirebaseAuth auth;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_splash);
 
-        // Initialize views
+        auth = FirebaseAuth.getInstance();
         mascotImage = findViewById(R.id.Mascot);
         verbixLogo = findViewById(R.id.Logo);
         loading = findViewById(R.id.progress);
 
-        // Set initial alpha to 0 (completely transparent)
         mascotImage.setAlpha(0f);
         verbixLogo.setAlpha(0f);
         loading.setAlpha(0f);
-
-        // Set progress to 0
         loading.setProgress(0);
 
-        // Start the animation sequence
         startAnimations();
     }
 
@@ -123,20 +120,15 @@ public class SplashActivity extends AppCompatActivity {
     }
 
     private void startMainActivity() {
-        Intent intent = new Intent(SplashActivity.this, MainActivity.class);
+        Intent intent;
+        if (auth.getCurrentUser() != null) {
+            intent = new Intent(SplashActivity.this, MainActivity.class);
+        } else {
+            intent = new Intent(SplashActivity.this, LoginActivity.class);
+        }
         startActivity(intent);
-
-        // Add exit transition
         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
-
-        // Close splash activity
         finish();
     }
 
-    // Optional: Handle back button
-    @Override
-    public void onBackPressed() {
-        // Disable back button during splash screen
-        return;
-    }
 }

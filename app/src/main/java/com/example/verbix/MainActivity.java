@@ -12,51 +12,76 @@ import androidx.core.view.WindowInsetsCompat;
 import android.content.Intent;
 import android.view.View;
 import android.view.Window;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
+import androidx.core.content.ContextCompat;
+
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.firebase.auth.FirebaseAuth;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     private CardView screeningCard, writingPatternCard, speechPatternCard,
-            practiceCard, trainSpeechCard;
+            practiceCard, trainSpeechCard, logoutCard;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Initialize cards
+        initializeViews();
+        setupClickListeners();
+        setupStatusBar();
+    }
+
+    private void initializeViews() {
         screeningCard = findViewById(R.id.screeningCard);
         writingPatternCard = findViewById(R.id.writingPatternCard);
         speechPatternCard = findViewById(R.id.speechPatternCard);
         practiceCard = findViewById(R.id.practiceCard);
         trainSpeechCard = findViewById(R.id.trainSpeechCard);
+        logoutCard = findViewById(R.id.logoutCard);
 
-        // Set click listeners
+        // Make cards clickable and focusable
+        CardView[] cards = {screeningCard, writingPatternCard, speechPatternCard,
+                practiceCard, trainSpeechCard, logoutCard};
+        for(CardView card : cards) {
+            card.setClickable(true);
+            card.setFocusable(true);
+        }
+    }
+
+    private void setupClickListeners() {
         screeningCard.setOnClickListener(this);
         writingPatternCard.setOnClickListener(this);
         speechPatternCard.setOnClickListener(this);
         practiceCard.setOnClickListener(this);
         trainSpeechCard.setOnClickListener(this);
 
-        // Add ripple effect to cards
-        screeningCard.setClickable(true);
-        writingPatternCard.setClickable(true);
-        speechPatternCard.setClickable(true);
-        practiceCard.setClickable(true);
-        trainSpeechCard.setClickable(true);
+        logoutCard.setOnClickListener(v -> {
+            FirebaseAuth.getInstance().signOut();
 
-        screeningCard.setFocusable(true);
-        writingPatternCard.setFocusable(true);
-        speechPatternCard.setFocusable(true);
-        practiceCard.setFocusable(true);
-        trainSpeechCard.setFocusable(true);
+            GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                    .requestIdToken(getString(R.string.client_id))
+                    .requestEmail()
+                    .build();
 
+            GoogleSignIn.getClient(this, gso).signOut().addOnCompleteListener(task -> {
+                Toast.makeText(MainActivity.this, "Logged out successfully", Toast.LENGTH_SHORT).show();
+                startActivity(new Intent(MainActivity.this, LoginActivity.class));
+                overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
+                finish();
+            });
+        });
+    }
+
+    private void setupStatusBar() {
         Window window = getWindow();
         window.setStatusBarColor(ContextCompat.getColor(this, R.color.gray_background));
 
-        // Make status bar icons dark
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
         }
@@ -82,5 +107,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             startActivity(intent);
             overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
         }
+    }
+
+    @Override
+    public void onBackPressed() {
+        // Disable back button
+        super.onBackPressed();
+        return;
     }
 }
