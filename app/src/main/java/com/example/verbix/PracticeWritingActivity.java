@@ -129,7 +129,7 @@ public class PracticeWritingActivity extends AppCompatActivity {
                 .addOnSuccessListener(result -> {
                     if (!result.getCandidates().isEmpty()) {
                         String recognizedText = result.getCandidates().get(0).getText();
-                        compareAndHighlight(recognizedText.toLowerCase(), currentWord.toLowerCase());
+                        compareAndHighlight(recognizedText, currentWord);
                     } else {
                         resultText.setText("Could not recognize the writing. Please try again.");
                     }
@@ -143,23 +143,19 @@ public class PracticeWritingActivity extends AppCompatActivity {
     private void compareAndHighlight(String recognized, String target) {
         if (resultText == null) return;
 
-        // Show both the recognized text and the target
         String displayText = "Written: " + recognized + "\nTarget: " + target;
         SpannableString spannableString = new SpannableString(displayText);
 
-        // Color the recognized text
-        int recognizedStart = 9; // After "Written: "
+        int recognizedStart = 9;
         for (int i = 0; i < recognized.length(); i++) {
             int position = recognizedStart + i;
             if (i < target.length() && recognized.charAt(i) == target.charAt(i)) {
-                // Correct letter - green
                 spannableString.setSpan(
                         new ForegroundColorSpan(Color.parseColor("#228B22")),
                         position, position + 1,
                         Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
                 );
             } else {
-                // Incorrect letter - red
                 spannableString.setSpan(
                         new ForegroundColorSpan(Color.parseColor("#B22222")),
                         position, position + 1,
