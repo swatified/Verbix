@@ -35,6 +35,8 @@ import android.text.style.StyleSpan;
 import android.text.style.RelativeSizeSpan;
 import android.graphics.Typeface;
 import java.util.function.Function;
+import android.animation.ObjectAnimator;
+import android.view.View;
 
 public class WritingPatternActivity extends AppCompatActivity {
     private FirebaseFirestore db;

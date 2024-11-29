@@ -1,11 +1,13 @@
 package com.example.verbix;
 
+import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.speech.SpeechRecognizer;
 import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.SpannableStringBuilder;
+import android.text.style.ForegroundColorSpan;
 import android.text.style.RelativeSizeSpan;
 import android.text.style.StyleSpan;
 import android.util.Log;
@@ -242,6 +244,23 @@ public class SpeechPatternActivity extends AppCompatActivity {
         overallHeader.setSpan(new StyleSpan(Typeface.BOLD), 0, overallHeader.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
         overallHeader.setSpan(new RelativeSizeSpan(1.5f), 0, overallHeader.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
         analysis.append(overallHeader);
+        analysis.append("\n\n");
+
+
+        //color-coded comparison
+        for (int i = 0; i < Math.min(originalWords.length, spokenWords.length); i++) {
+            SpannableString wordSpan = new SpannableString(spokenWords[i]);
+            int minLength = Math.min(originalWords[i].length(), spokenWords[i].length());
+
+            for (int j = 0; j < spokenWords[i].length(); j++) {
+                int color = (j < minLength && originalWords[i].charAt(j) == spokenWords[i].charAt(j))
+                        ? Color.parseColor("#228B22") : Color.parseColor("#DC143C");
+                wordSpan.setSpan(new ForegroundColorSpan(color), j, j + 1,
+                        Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+            analysis.append(wordSpan);
+            analysis.append(" ");
+        }
         analysis.append("\n\n");
 
         SpannableString accuracyText = new SpannableString(String.format("Accuracy: %.1f%%\n", accuracy));
