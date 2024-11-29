@@ -1,6 +1,7 @@
 package com.example.verbix;
 
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.os.Bundle;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -12,6 +13,9 @@ import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.SpannableStringBuilder;
 import android.text.style.ForegroundColorSpan;
+import android.text.style.RelativeSizeSpan;
+import android.text.style.StyleSpan;
+import android.text.style.UnderlineSpan;
 import android.util.Log;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -27,6 +31,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import android.text.style.StyleSpan;
+import android.text.style.RelativeSizeSpan;
+import android.graphics.Typeface;
+import java.util.function.Function;
 
 public class WritingPatternActivity extends AppCompatActivity {
     private FirebaseFirestore db;
@@ -122,87 +130,140 @@ public class WritingPatternActivity extends AppCompatActivity {
 
     private void compareTexts(String scannedText) {
         String originalText = paragraphText.getText().toString();
-        SpannableStringBuilder fullTextSpan = new SpannableStringBuilder();
+        SpannableStringBuilder analysis = new SpannableStringBuilder();
 
         // Color-coded comparison
         String[] originalWords = originalText.split("\\s+");
         String[] scannedWords = scannedText.split("\\s+");
-        for (int i = 0; i < originalWords.length && i < scannedWords.length; i++) {
-            String originalWord = originalWords[i];
-            String scannedWord = scannedWords[i];
-            SpannableString wordSpan = new SpannableString(scannedWord);
-            int minLength = Math.min(originalWord.length(), scannedWord.length());
-            for (int j = 0; j < scannedWord.length(); j++) {
-                int color = (j < minLength && originalWord.charAt(j) == scannedWord.charAt(j))
-                        ? Color.parseColor("#228B22") : Color.parseColor("#DC143C");
-                wordSpan.setSpan(new ForegroundColorSpan(color), j, j + 1,
-                        Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-            }
-            fullTextSpan.append(wordSpan);
-            fullTextSpan.append(" ");
-        }
+        addColorComparison(originalWords, scannedWords, analysis);
+        analysis.append("\n\n");
 
         // Calculate accuracy
         int totalWords = originalWords.length;
-        int correctWords = 0;
-        List<String> mistakes = new ArrayList<>();
-
-        // Compare each word
-        for (int i = 0; i < originalWords.length && i < scannedWords.length; i++) {
-            if (originalWords[i].equals(scannedWords[i])) {
-                correctWords++;
-            } else {
-                mistakes.add(scannedWords[i] + " → " + originalWords[i]);
-            }
-        }
-
+        int correctWords = countCorrectWords(originalWords, scannedWords);
         float accuracy = (float) correctWords / totalWords * 100;
 
-
-
-
-        // Basic mistake analysis
-        Map<String, Integer> basicLetterConfusions = new HashMap<>();
+        // Maps for analysis
+        Map<String, Integer> letterConfusions = new HashMap<>();
         Map<String, Integer> troubleLetters = new HashMap<>();
         Map<String, Integer> missingLetters = new HashMap<>();
         Map<String, Integer> extraLetters = new HashMap<>();
         Map<String, Integer> caseMistakes = new HashMap<>();
-
-        // Enhanced pattern analysis for dyslexia
         Map<String, Integer> reversalPatterns = new HashMap<>();
         Map<String, Integer> soundPatterns = new HashMap<>();
         Map<String, Integer> sequenceErrors = new HashMap<>();
         Map<String, Integer> visualSimilarity = new HashMap<>();
 
-        for (int i = 0; i < originalWords.length && i < scannedWords.length; i++) {
+        // Analyze patterns
+        analyzeMistakes(originalWords, scannedWords, letterConfusions, troubleLetters,
+                missingLetters, extraLetters, caseMistakes, reversalPatterns,
+                soundPatterns, sequenceErrors, visualSimilarity);
+
+        // Overall Analysis
+        analysis.append(String.format("Accuracy: %.1f%%\n", accuracy));
+        analysis.append(String.format("Correct words: %d/%d\n\n", correctWords, totalWords));
+
+        // Basic Writing Analysis
+        addStyledHeader(analysis, "Basic Writing Analysis", true);
+        addSection(analysis, letterConfusions, "Letter Confusions:",
+                e -> formatMistakeEntry(e, " times"));
+        addSection(analysis, missingLetters, "Missing Letters:",
+                e -> formatMistakeEntry(e, " times"));
+        addSection(analysis, extraLetters, "Extra Letters:",
+                e -> formatMistakeEntry(e, " times"));
+        addSection(analysis, caseMistakes, "Case Mistakes:",
+                e -> formatMistakeEntry(e, " times"));
+        addSection(analysis, troubleLetters, "Trouble Letters:",
+                e -> String.format("• Having trouble with '%s' (%d mistakes)", e.getKey(), e.getValue()));
+
+        // Dyslexia Analysis
+        addStyledHeader(analysis, "Dyslexia-Specific Analysis", true);
+        addSection(analysis, reversalPatterns, "Letter Reversals:",
+                e -> "• " + e.getKey());
+        addSection(analysis, soundPatterns, "Sound Patterns:",
+                e -> "• " + e.getKey());
+        addSection(analysis, sequenceErrors, "Sequence Issues:",
+                e -> "• " + e.getKey());
+        addSection(analysis, visualSimilarity, "Visual Similarities:",
+                e -> "• " + e.getKey());
+
+        resultText.setText(analysis);
+    }
+
+    private void addColorComparison(String[] originalWords, String[] scannedWords,
+                                    SpannableStringBuilder builder) {
+        for (int i = 0; i < Math.min(originalWords.length, scannedWords.length); i++) {
+            SpannableString wordSpan = new SpannableString(scannedWords[i]);
+            int minLength = Math.min(originalWords[i].length(), scannedWords[i].length());
+
+            for (int j = 0; j < scannedWords[i].length(); j++) {
+                int color = (j < minLength && originalWords[i].charAt(j) == scannedWords[i].charAt(j))
+                        ? Color.parseColor("#228B22") : Color.parseColor("#DC143C");
+                wordSpan.setSpan(new ForegroundColorSpan(color), j, j + 1,
+                        Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+            builder.append(wordSpan).append(" ");
+        }
+    }
+
+    private void addStyledHeader(SpannableStringBuilder builder, String text, boolean large) {
+        SpannableString header = new SpannableString(text);
+        header.setSpan(new StyleSpan(Typeface.BOLD), 0, text.length(),
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        if (large) {
+            header.setSpan(new RelativeSizeSpan(1.5f), 0, text.length(),
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            header.setSpan(new UnderlineSpan(), 0, text.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            builder.append(header).append("\n\n");
+        } else {
+            builder.append(header).append("\n");
+        }
+    }
+
+    private void addSection(SpannableStringBuilder builder, Map<String, Integer> data,
+                            String title, Function<Map.Entry<String, Integer>, String> formatter) {
+        if (!data.isEmpty()) {
+            addStyledHeader(builder, title, false);
+            data.entrySet().stream()
+                    .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
+                    .limit(3)
+                    .forEach(e -> builder.append(formatter.apply(e)).append("\n"));
+            builder.append("\n");
+        }
+    }
+
+    private String formatMistakeEntry(Map.Entry<String, Integer> entry, String suffix) {
+        return String.format("• %s (%d%s)", entry.getKey(), entry.getValue(), suffix);
+    }
+
+    private int countCorrectWords(String[] original, String[] scanned) {
+        int count = 0;
+        for (int i = 0; i < Math.min(original.length, scanned.length); i++) {
+            if (original[i].equals(scanned[i])) count++;
+        }
+        return count;
+    }
+
+    private void analyzeMistakes(String[] originalWords, String[] scannedWords,
+                                 Map<String, Integer> letterConfusions, Map<String, Integer> troubleLetters,
+                                 Map<String, Integer> missingLetters, Map<String, Integer> extraLetters,
+                                 Map<String, Integer> caseMistakes, Map<String, Integer> reversalPatterns,
+                                 Map<String, Integer> soundPatterns, Map<String, Integer> sequenceErrors,
+                                 Map<String, Integer> visualSimilarity) {
+
+        for (int i = 0; i < Math.min(originalWords.length, scannedWords.length); i++) {
             String original = originalWords[i];
             String scanned = scannedWords[i];
             String originalLower = original.toLowerCase();
             String scannedLower = scanned.toLowerCase();
 
-            // Basic analysis checks
             checkBasicMistakes(original, scanned, originalLower, scannedLower,
-                    basicLetterConfusions, troubleLetters, missingLetters,
-                    extraLetters, caseMistakes);
-
-            // Dyslexia-specific checks
+                    letterConfusions, troubleLetters, missingLetters, extraLetters, caseMistakes);
             checkReversals(originalLower, scannedLower, reversalPatterns);
             checkPhoneticPatterns(originalLower, scannedLower, soundPatterns);
             checkSequenceErrors(originalLower, scannedLower, sequenceErrors);
             checkVisualSimilarities(originalLower, scannedLower, visualSimilarity);
         }
-
-        // Build complete analysis
-        StringBuilder analysis = new StringBuilder("\nBasic Writing Analysis:\n");
-        addBasicAnalysis(analysis, basicLetterConfusions, troubleLetters,
-                missingLetters, extraLetters, caseMistakes);
-
-        analysis.append("\nDyslexia-Focused Analysis:\n");
-        addDyslexiaAnalysis(analysis, reversalPatterns, soundPatterns,
-                sequenceErrors, visualSimilarity);
-
-        fullTextSpan.append(analysis.toString());
-        resultText.setText(fullTextSpan);
     }
 
     private void checkBasicMistakes(String original, String scanned,
@@ -313,93 +374,6 @@ public class WritingPatternActivity extends AppCompatActivity {
                     patterns.put(key, patterns.getOrDefault(key, 0) + 1);
                 }
             }
-        }
-    }
-
-    private void addBasicAnalysis(StringBuilder analysis,
-                                  Map<String, Integer> letterConfusions, Map<String, Integer> troubleLetters,
-                                  Map<String, Integer> missingLetters, Map<String, Integer> extraLetters,
-                                  Map<String, Integer> caseMistakes) {
-
-        letterConfusions.entrySet().stream()
-                .filter(e -> e.getValue() >= 2)
-                .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
-                .limit(3)
-                .forEach(e -> analysis.append("• Confused '")
-                        .append(e.getKey())
-                        .append("' ")
-                        .append(e.getValue())
-                        .append(" times\n"));
-
-        missingLetters.entrySet().stream()
-                .filter(e -> e.getValue() >= 1)
-                .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
-                .limit(3)
-                .forEach(e -> analysis.append("• Forgot to write '")
-                        .append(e.getKey())
-                        .append("' ")
-                        .append(e.getValue())
-                        .append(" times\n"));
-
-        extraLetters.entrySet().stream()
-                .filter(e -> e.getValue() >= 1)
-                .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
-                .limit(3)
-                .forEach(e -> analysis.append("• Added extra '")
-                        .append(e.getKey())
-                        .append("' ")
-                        .append(e.getValue())
-                        .append(" times\n"));
-
-        caseMistakes.entrySet().stream()
-                .filter(e -> e.getValue() >= 1)
-                .forEach(e -> analysis.append("• Incorrect case for '")
-                        .append(e.getKey())
-                        .append("' ")
-                        .append(e.getValue())
-                        .append(" times\n"));
-
-        troubleLetters.entrySet().stream()
-                .filter(e -> e.getValue() >= 2)
-                .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
-                .limit(3)
-                .forEach(e -> analysis.append("• Having trouble with '")
-                        .append(e.getKey())
-                        .append("' (")
-                        .append(e.getValue())
-                        .append(" mistakes)\n"));
-    }
-
-    private void addDyslexiaAnalysis(StringBuilder analysis,
-                                     Map<String, Integer> reversalPatterns, Map<String, Integer> soundPatterns,
-                                     Map<String, Integer> sequenceErrors, Map<String, Integer> visualSimilarity) {
-
-        if (!reversalPatterns.isEmpty()) {
-            analysis.append("\nLetter Reversals:\n");
-            reversalPatterns.entrySet().stream()
-                    .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
-                    .forEach(e -> analysis.append("• ").append(e.getKey()).append("\n"));
-        }
-
-        if (!soundPatterns.isEmpty()) {
-            analysis.append("\nSound Pattern Issues:\n");
-            soundPatterns.entrySet().stream()
-                    .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
-                    .forEach(e -> analysis.append("• ").append(e.getKey()).append("\n"));
-        }
-
-        if (!sequenceErrors.isEmpty()) {
-            analysis.append("\nLetter Sequence Issues:\n");
-            sequenceErrors.entrySet().stream()
-                    .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
-                    .forEach(e -> analysis.append("• ").append(e.getKey()).append("\n"));
-        }
-
-        if (!visualSimilarity.isEmpty()) {
-            analysis.append("\nVisually Similar Letter Confusion:\n");
-            visualSimilarity.entrySet().stream()
-                    .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
-                    .forEach(e -> analysis.append("• ").append(e.getKey()).append("\n"));
         }
     }
 }

@@ -235,7 +235,7 @@ public class SpeechPatternActivity extends AppCompatActivity {
 
         // Build comprehensive analysis
         float accuracy = (float) correctWords / totalWords * 100;
-        StringBuilder analysis = new StringBuilder();
+        SpannableStringBuilder analysis = new SpannableStringBuilder();
 
         // Basic Statistics
         SpannableString overallHeader = new SpannableString("Overall Analysis");
@@ -244,63 +244,77 @@ public class SpeechPatternActivity extends AppCompatActivity {
         analysis.append(overallHeader);
         analysis.append("\n\n");
 
-        analysis.append(String.format("Accuracy: %.1f%%\n", accuracy));
-        analysis.append(String.format("Correct words: %d/%d\n\n", correctWords, totalWords));
+        SpannableString accuracyText = new SpannableString(String.format("Accuracy: %.1f%%\n", accuracy));
+        analysis.append(accuracyText);
+
+        SpannableString wordsText = new SpannableString(String.format("Correct words: %d/%d\n\n", correctWords, totalWords));
+        analysis.append(wordsText);
 
         // General Patterns
         if (!generalPatterns.isEmpty()) {
-            analysis.append("Common Patterns:\n");
+            SpannableString patternsHeader = new SpannableString("Common Patterns:\n");
+            patternsHeader.setSpan(new StyleSpan(Typeface.BOLD), 0, patternsHeader.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            analysis.append(patternsHeader);
             generalPatterns.entrySet().stream()
                     .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
                     .limit(5)
                     .forEach(e -> analysis.append("• ").append(e.getKey())
-                            .append(" (").append(e.getValue()).append(" times)\n"));
+                            .append(" (").append(String.valueOf(e.getValue())).append(" times)\n"));
             analysis.append("\n");
         }
 
         // Word Mistakes
         if (!wordMistakes.isEmpty()) {
-            analysis.append("Word Mistakes:\n");
+            SpannableString mistakesHeader = new SpannableString("Word Mistakes:\n");
+            mistakesHeader.setSpan(new StyleSpan(Typeface.BOLD), 0, mistakesHeader.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            analysis.append(mistakesHeader);
             wordMistakes.forEach(mistake -> analysis.append("• ").append(mistake).append("\n"));
             analysis.append("\n");
         }
 
         // Phonetic Analysis
         if (!phoneticMistakes.isEmpty()) {
-            analysis.append("Sound Issues:\n");
+            SpannableString soundHeader = new SpannableString("Sound Issues:\n");
+            soundHeader.setSpan(new StyleSpan(Typeface.BOLD), 0, soundHeader.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            analysis.append(soundHeader);
             phoneticMistakes.forEach(mistake -> analysis.append("• ").append(mistake).append("\n"));
             analysis.append("\n");
         }
 
         // Dyslexia-Specific Analysis
-        SpannableString header = new SpannableString("Speech Pattern Analysis");
-        header.setSpan(new StyleSpan(Typeface.BOLD), 0, header.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-        header.setSpan(new RelativeSizeSpan(1.5f), 0, header.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-        analysis.append(header);
-        analysis.append("\n\n");
+        SpannableString speechHeader = new SpannableString("Speech Pattern Analysis");
+        speechHeader.setSpan(new StyleSpan(Typeface.BOLD), 0, speechHeader.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        speechHeader.setSpan(new RelativeSizeSpan(1.5f), 0, speechHeader.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        analysis.append(speechHeader).append("\n\n");
 
         if (!soundConfusions.isEmpty()) {
-            analysis.append("Sound Confusions:\n");
+            SpannableString confusionsHeader = new SpannableString("Sound Confusions:\n");
+            confusionsHeader.setSpan(new StyleSpan(Typeface.BOLD), 0, confusionsHeader.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            analysis.append(confusionsHeader);
             soundConfusions.entrySet().stream()
                     .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
                     .forEach(e -> analysis.append("• ").append(e.getKey()).append("\n"));
         }
 
         if (!syllablePatterns.isEmpty()) {
-            analysis.append("\nSyllable Patterns:\n");
+            SpannableString syllableHeader = new SpannableString("\nSyllable Patterns:\n");
+            syllableHeader.setSpan(new StyleSpan(Typeface.BOLD), 0, syllableHeader.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            analysis.append(syllableHeader);
             syllablePatterns.entrySet().stream()
                     .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
                     .forEach(e -> analysis.append("• ").append(e.getKey()).append("\n"));
         }
 
         if (!endingPatterns.isEmpty()) {
-            analysis.append("\nWord Ending Patterns:\n");
+            SpannableString endingHeader = new SpannableString("\nWord Ending Patterns:\n");
+            endingHeader.setSpan(new StyleSpan(Typeface.BOLD), 0, endingHeader.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            analysis.append(endingHeader);
             endingPatterns.entrySet().stream()
                     .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
                     .forEach(e -> analysis.append("• ").append(e.getKey()).append("\n"));
         }
 
-        resultText.setText(analysis.toString());
+        resultText.setText(analysis);
     }
 
     private void analyzePhoneticMistakes(String original, String spoken, List<String> phoneticMistakes) {
