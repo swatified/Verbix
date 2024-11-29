@@ -1,7 +1,13 @@
 package com.example.verbix;
 
+import android.graphics.Typeface;
 import android.os.Bundle;
 import android.speech.SpeechRecognizer;
+import android.text.Spannable;
+import android.text.SpannableString;
+import android.text.SpannableStringBuilder;
+import android.text.style.RelativeSizeSpan;
+import android.text.style.StyleSpan;
 import android.util.Log;
 import android.widget.Button;
 import android.widget.TextView;
@@ -189,57 +195,112 @@ public class SpeechPatternActivity extends AppCompatActivity {
 
     private void compareTexts(String spokenText) {
         String originalText = paragraphText.getText().toString();
-        StringBuilder resultBuilder = new StringBuilder();
+        SpannableStringBuilder fullTextSpan = new SpannableStringBuilder();
 
-        // Split into words
         String[] originalWords = originalText.toLowerCase().split("\\s+");
         String[] spokenWords = spokenText.toLowerCase().split("\\s+");
 
+        // Basic statistics
         int totalWords = originalWords.length;
         int correctWords = 0;
-        List<String> mistakes = new ArrayList<>();
+        List<String> wordMistakes = new ArrayList<>();
+        Map<String, Integer> generalPatterns = new HashMap<>();
         List<String> phoneticMistakes = new ArrayList<>();
 
-        // Compare words and analyze phonetics
+        // Dyslexia-specific patterns
+        Map<String, Integer> soundConfusions = new HashMap<>();
+        Map<String, Integer> syllablePatterns = new HashMap<>();
+        Map<String, Integer> endingPatterns = new HashMap<>();
+
+        // Compare words and collect patterns
         for (int i = 0; i < Math.min(originalWords.length, spokenWords.length); i++) {
-            if (originalWords[i].equals(spokenWords[i])) {
+            String original = originalWords[i];
+            String spoken = spokenWords[i];
+
+            if (original.equals(spoken)) {
                 correctWords++;
             } else {
-                mistakes.add(spokenWords[i] + " → " + originalWords[i]);
-                analyzePhoneticMistakes(originalWords[i], spokenWords[i], phoneticMistakes);
+                wordMistakes.add(spoken + " → " + original);
+
+                // General pattern analysis
+                analyzeGeneralPatterns(original, spoken, generalPatterns);
+                analyzePhoneticMistakes(original, spoken, phoneticMistakes);
+
+                // Dyslexia-specific analysis
+                analyzeSoundConfusions(original, spoken, soundConfusions);
+                analyzeSyllablePatterns(original, spoken, syllablePatterns);
+                analyzeEndingPatterns(original, spoken, endingPatterns);
             }
         }
 
-        // Calculate accuracy
+        // Build comprehensive analysis
         float accuracy = (float) correctWords / totalWords * 100;
+        StringBuilder analysis = new StringBuilder();
 
-        // Build result
-        resultBuilder.append("Accuracy: ").append(String.format("%.1f%%", accuracy))
-                .append("\n\n");
-        resultBuilder.append("Correct words: ").append(correctWords)
-                .append("/").append(totalWords).append("\n\n");
+        // Basic Statistics
+        SpannableString overallHeader = new SpannableString("Overall Analysis");
+        overallHeader.setSpan(new StyleSpan(Typeface.BOLD), 0, overallHeader.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        overallHeader.setSpan(new RelativeSizeSpan(1.5f), 0, overallHeader.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        analysis.append(overallHeader);
+        analysis.append("\n\n");
 
-        if (!mistakes.isEmpty()) {
-            resultBuilder.append("Word Mistakes:\n");
-            for (String mistake : mistakes) {
-                String[] parts = mistake.split(" → ");
-                // Swap the order and skip if they're the same
-                if (!parts[0].equals(parts[1].replace(".", ""))) {
-                    resultBuilder.append("• ").append(parts[1].replace(".", ""))
-                            .append(" → ").append(parts[0]).append("\n");
-                }
-            }
-            resultBuilder.append("\n");
+        analysis.append(String.format("Accuracy: %.1f%%\n", accuracy));
+        analysis.append(String.format("Correct words: %d/%d\n\n", correctWords, totalWords));
+
+        // General Patterns
+        if (!generalPatterns.isEmpty()) {
+            analysis.append("Common Patterns:\n");
+            generalPatterns.entrySet().stream()
+                    .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
+                    .limit(5)
+                    .forEach(e -> analysis.append("• ").append(e.getKey())
+                            .append(" (").append(e.getValue()).append(" times)\n"));
+            analysis.append("\n");
         }
 
+        // Word Mistakes
+        if (!wordMistakes.isEmpty()) {
+            analysis.append("Word Mistakes:\n");
+            wordMistakes.forEach(mistake -> analysis.append("• ").append(mistake).append("\n"));
+            analysis.append("\n");
+        }
+
+        // Phonetic Analysis
         if (!phoneticMistakes.isEmpty()) {
-            resultBuilder.append("Sound Issues:\n");
-            for (String phoneticMistake : phoneticMistakes) {
-                resultBuilder.append("• ").append(phoneticMistake).append("\n");
-            }
+            analysis.append("Sound Issues:\n");
+            phoneticMistakes.forEach(mistake -> analysis.append("• ").append(mistake).append("\n"));
+            analysis.append("\n");
         }
 
-        resultText.setText(resultBuilder.toString());
+        // Dyslexia-Specific Analysis
+        SpannableString header = new SpannableString("Speech Pattern Analysis");
+        header.setSpan(new StyleSpan(Typeface.BOLD), 0, header.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        header.setSpan(new RelativeSizeSpan(1.5f), 0, header.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        analysis.append(header);
+        analysis.append("\n\n");
+
+        if (!soundConfusions.isEmpty()) {
+            analysis.append("Sound Confusions:\n");
+            soundConfusions.entrySet().stream()
+                    .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
+                    .forEach(e -> analysis.append("• ").append(e.getKey()).append("\n"));
+        }
+
+        if (!syllablePatterns.isEmpty()) {
+            analysis.append("\nSyllable Patterns:\n");
+            syllablePatterns.entrySet().stream()
+                    .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
+                    .forEach(e -> analysis.append("• ").append(e.getKey()).append("\n"));
+        }
+
+        if (!endingPatterns.isEmpty()) {
+            analysis.append("\nWord Ending Patterns:\n");
+            endingPatterns.entrySet().stream()
+                    .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
+                    .forEach(e -> analysis.append("• ").append(e.getKey()).append("\n"));
+        }
+
+        resultText.setText(analysis.toString());
     }
 
     private void analyzePhoneticMistakes(String original, String spoken, List<String> phoneticMistakes) {
@@ -252,8 +313,6 @@ public class SpeechPatternActivity extends AppCompatActivity {
         soundPatterns.put("w", "v");           // 'wait' → 'vait'
         soundPatterns.put("sh", "s");          // 'ship' → 'sip'
         soundPatterns.put("ch", "sh,t");       // 'chair' → 'share'
-
-        // Vowel sounds
         soundPatterns.put("ee", "i");          // 'sheep' → 'ship'
         soundPatterns.put("ea", "ee,i");       // 'beat' → 'bit'
         soundPatterns.put("ai", "ay,e");       // 'rain' → 'ren'
@@ -271,17 +330,107 @@ public class SpeechPatternActivity extends AppCompatActivity {
             }
         }
 
-        // Check for dropped endings
+        // Check dropped endings
         if (original.length() > spoken.length() &&
                 original.substring(0, spoken.length()).equals(spoken)) {
             phoneticMistakes.add("Dropped ending in '" + original + "'");
         }
 
-        // Check for added sounds
+        // Check added sounds
         if (spoken.length() > original.length() &&
                 spoken.substring(0, original.length()).equals(original)) {
             phoneticMistakes.add("Added extra sound in '" + spoken + "'");
         }
+    }
+
+    private void analyzeGeneralPatterns(String original, String spoken, Map<String, Integer> patterns) {
+        // Word length differences
+        if (Math.abs(original.length() - spoken.length()) > 2) {
+            String pattern = original.length() > spoken.length() ?
+                    "Shortening words" : "Adding extra sounds";
+            patterns.put(pattern, patterns.getOrDefault(pattern, 0) + 1);
+        }
+
+        // Repeated sounds
+        if (containsRepeatedSounds(spoken) && !containsRepeatedSounds(original)) {
+            patterns.put("Adding repeated sounds", patterns.getOrDefault("Adding repeated sounds", 0) + 1);
+        }
+
+        // Initial sound mistakes
+        if (!spoken.isEmpty() && !original.isEmpty() && spoken.charAt(0) != original.charAt(0)) {
+            patterns.put("Changing initial sounds",
+                    patterns.getOrDefault("Changing initial sounds", 0) + 1);
+        }
+    }
+
+    private void analyzeSoundConfusions(String original, String spoken,
+                                        Map<String, Integer> confusions) {
+        Map<String, String[]> commonConfusions = new HashMap<>();
+        commonConfusions.put("th", new String[]{"f", "t", "d"});  // think → fink
+        commonConfusions.put("r", new String[]{"w", "l"});        // red → wed
+        commonConfusions.put("s", new String[]{"th", "f"});       // sink → think
+        commonConfusions.put("ch", new String[]{"sh", "t"});      // chair → share
+        commonConfusions.put("v", new String[]{"b", "f"});        // very → berry
+
+        for (Map.Entry<String, String[]> entry : commonConfusions.entrySet()) {
+            String target = entry.getKey();
+            if (original.contains(target)) {
+                for (String confusion : entry.getValue()) {
+                    if (spoken.contains(confusion)) {
+                        String key = "Replacing '" + target + "' with '" + confusion + "'";
+                        confusions.put(key, confusions.getOrDefault(key, 0) + 1);
+                    }
+                }
+            }
+        }
+    }
+
+    private void analyzeSyllablePatterns(String original, String spoken,
+                                         Map<String, Integer> patterns) {
+        // Count syllables (simplified method)
+        int originalSyllables = countSyllables(original);
+        int spokenSyllables = countSyllables(spoken);
+
+        if (originalSyllables != spokenSyllables) {
+            String pattern = originalSyllables > spokenSyllables ?
+                    "Dropping syllables" : "Adding syllables";
+            patterns.put(pattern, patterns.getOrDefault(pattern, 0) + 1);
+        }
+    }
+
+    private void analyzeEndingPatterns(String original, String spoken,
+                                       Map<String, Integer> patterns) {
+        String[] commonEndings = {"ing", "ed", "s", "es", "ly"};
+
+        for (String ending : commonEndings) {
+            if (original.endsWith(ending) && !spoken.endsWith(ending)) {
+                String pattern = "Missing '" + ending + "' ending";
+                patterns.put(pattern, patterns.getOrDefault(pattern, 0) + 1);
+            }
+            if (!original.endsWith(ending) && spoken.endsWith(ending)) {
+                String pattern = "Adding extra '" + ending + "' ending";
+                patterns.put(pattern, patterns.getOrDefault(pattern, 0) + 1);
+            }
+        }
+    }
+
+    private boolean containsRepeatedSounds(String word) {
+        for (int i = 0; i < word.length() - 1; i++) {
+            if (word.charAt(i) == word.charAt(i + 1)) return true;
+        }
+        return false;
+    }
+
+    private int countSyllables(String word) {
+        word = word.toLowerCase();
+        int count = 0;
+        boolean isPreviousVowel = false;
+        for (int i = 0; i < word.length(); i++) {
+            boolean isVowel = "aeiou".indexOf(word.charAt(i)) != -1;
+            if (isVowel && !isPreviousVowel) count++;
+            isPreviousVowel = isVowel;
+        }
+        return Math.max(1, count);
     }
 
     @Override
