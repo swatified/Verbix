@@ -3,8 +3,6 @@ package com.example.verbix;
 import android.os.Bundle;
 
 import android.graphics.Color;
-import android.graphics.Path;
-import android.os.Bundle;
 import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.style.ForegroundColorSpan;
