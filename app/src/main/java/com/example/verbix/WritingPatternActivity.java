@@ -62,6 +62,9 @@ public class WritingPatternActivity extends AppCompatActivity {
         resultText = findViewById(R.id.resultText);
         scannedImage = findViewById(R.id.scannedImage);
         scanButton = findViewById(R.id.scanButton);
+        ImageView cameraIcon = findViewById(R.id.cameraIcon);
+        scannedImage.setVisibility(View.GONE);
+        cameraIcon.setVisibility(View.VISIBLE);
     }
 
     private void getRandomParagraph() {
@@ -116,7 +119,13 @@ public class WritingPatternActivity extends AppCompatActivity {
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
             Bundle extras = data.getExtras();
             Bitmap imageBitmap = (Bitmap) extras.get("data");
+
+            // Add visibility logic here
+            ImageView cameraIcon = findViewById(R.id.cameraIcon);
             scannedImage.setImageBitmap(imageBitmap);
+            scannedImage.setVisibility(View.VISIBLE);
+            cameraIcon.setVisibility(View.GONE);
+
             recognizeText(imageBitmap);
         }
     }
