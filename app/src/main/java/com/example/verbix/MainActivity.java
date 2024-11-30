@@ -1,8 +1,10 @@
 package com.example.verbix;
 
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import android.content.Intent;
@@ -15,11 +17,21 @@ import androidx.cardview.widget.CardView;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.firebase.auth.FirebaseAuth;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.annotation.NonNull;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     private CardView screeningCard, writingPatternCard, speechPatternCard,
             practiceCard, trainSpeechCard, logoutCard;
+    private static final int PERMISSION_REQUEST_CODE = 123;
+    private String[] permissions = {
+            Manifest.permission.CAMERA,
+            Manifest.permission.RECORD_AUDIO
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -29,6 +41,57 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         initializeViews();
         setupClickListeners();
         setupStatusBar();
+        checkPermissions();
+    }
+
+    private void checkPermissions() {
+        boolean allPermissionsGranted = true;
+        for (String permission : permissions) {
+            if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+                allPermissionsGranted = false;
+                break;
+            }
+        }
+
+        if (!allPermissionsGranted) {
+            ActivityCompat.requestPermissions(this, permissions, PERMISSION_REQUEST_CODE);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == PERMISSION_REQUEST_CODE) {
+            boolean allGranted = true;
+            for (int result : grantResults) {
+                if (result != PackageManager.PERMISSION_GRANTED) {
+                    allGranted = false;
+                    break;
+                }
+            }
+
+            if (!allGranted) {
+                new AlertDialog.Builder(this)
+                        .setTitle("Permissions Required")
+                        .setMessage("Camera and Microphone permissions are required for this app to function properly. Please enable them in Settings.")
+                        .setPositiveButton("Go to Settings", (dialog, which) -> {
+                            Intent intent = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                            Uri uri = Uri.fromParts("package", getPackageName(), null);
+                            intent.setData(uri);
+                            startActivity(intent);
+                        })
+                        .setNegativeButton("Cancel", null)
+                        .setCancelable(false)
+                        .show();
+            }
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        checkPermissions();  // Check permissions every time activity resumes
     }
 
     private void initializeViews() {
@@ -86,7 +149,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         Intent intent = null;
 
         if (v.getId() == R.id.screeningCard) {
-            intent = new Intent(this, ScreeningActivity.class);
+            Toast.makeText(this, "Coming Soon", Toast.LENGTH_SHORT).show();
+            return;
         } else if (v.getId() == R.id.writingPatternCard) {
             intent = new Intent(this, WritingPatternActivity.class);
         } else if (v.getId() == R.id.speechPatternCard) {
