@@ -6,7 +6,8 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:scrollbars="vertical"
     android:fadeScrollbars="false"
-    android:scrollbarStyle="outsideOverlay"
+    android:scrollbarSize="10dp"
+    android:scrollbarStyle="outsideInset"
     android:background="@color/splash_background"
     android:theme="@style/CustomScrollbarStyle">
 
@@ -88,7 +89,7 @@
                     android:src="@drawable/ic_crop"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:padding="12dp"
-                    android:layout_marginEnd="40dp"/>
+                    android:layout_marginEnd="30dp"/>
 
                 <Button
                     android:id="@+id/confirmButton"
