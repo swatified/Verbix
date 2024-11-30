@@ -2,6 +2,7 @@ package com.example.verbix;
 
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -37,7 +38,16 @@ import android.text.style.RelativeSizeSpan;
 import android.graphics.Typeface;
 import java.util.function.Function;
 import android.animation.ObjectAnimator;
-import android.view.View;
+import android.view.View;import android.graphics.Matrix;
+import android.graphics.RectF;
+import android.view.MotionEvent;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.drawable.BitmapDrawable;
+import android.widget.ImageButton;
+import android.view.ViewGroup;
+import android.widget.LinearLayout;
+import androidx.cardview.widget.CardView;
 
 public class WritingPatternActivity extends AppCompatActivity {
     private FirebaseFirestore db;
@@ -46,12 +56,28 @@ public class WritingPatternActivity extends AppCompatActivity {
     private FrameLayout scanButton;
     private static final int REQUEST_IMAGE_CAPTURE = 1;
 
+    // Add these new fields
+    private float rotationAngle = 0f;
+    private RectF cropRect;
+    private boolean isCropping = false;
+    private float lastTouchX, lastTouchY;
+    private static final int CORNER_TOUCH_THRESHOLD = 50;
+    private View cropOverlay;
+    private LinearLayout editControls;
+    private ImageButton rotateButton, cropButton;
+    private Button confirmButton, cancelButton;
+    private Bitmap originalBitmap;
+
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_writing_pattern);
 
         initViews();
+        setupEditControls();
+        initCropOverlay();
         db = FirebaseFirestore.getInstance();
         getRandomParagraph();
 
@@ -63,10 +89,53 @@ public class WritingPatternActivity extends AppCompatActivity {
         resultText = findViewById(R.id.resultText);
         scannedImage = findViewById(R.id.scannedImage);
         scanButton = findViewById(R.id.scanContainer);
+        editControls = findViewById(R.id.editControls);
+        rotateButton = findViewById(R.id.rotateButton);
+        cropButton = findViewById(R.id.cropButton);
+        confirmButton = findViewById(R.id.confirmButton);
+        cancelButton = findViewById(R.id.cancelButton);
+        cropOverlay = findViewById(R.id.cropOverlay);
         ImageView cameraIcon = findViewById(R.id.cameraIcon);
+
+        editControls.setVisibility(View.GONE);
+        cropOverlay.setVisibility(View.GONE);
         scannedImage.setVisibility(View.GONE);
         cameraIcon.setVisibility(View.VISIBLE);
     }
+
+    private void setupEditControls() {
+        rotateButton.setOnClickListener(v -> rotateImage());
+        cropButton.setOnClickListener(v -> startCropping());
+        confirmButton.setOnClickListener(v -> confirmEdit());
+        cancelButton.setOnClickListener(v -> cancelEdit());
+    }
+
+    private void initCropOverlay() {
+        cropOverlay.setOnTouchListener((v, event) -> {
+            if (!isCropping) return false;
+
+            float x = event.getX();
+            float y = event.getY();
+
+            switch (event.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    lastTouchX = x;
+                    lastTouchY = y;
+                    return true;
+
+                case MotionEvent.ACTION_MOVE:
+                    float dx = x - lastTouchX;
+                    float dy = y - lastTouchY;
+                    updateCropRect(dx, dy, x, y);
+                    lastTouchX = x;
+                    lastTouchY = y;
+                    cropOverlay.invalidate();
+                    return true;
+            }
+            return false;
+        });
+    }
+
 
     private void getRandomParagraph() {
         db.collection("practicepara")
@@ -119,16 +188,223 @@ public class WritingPatternActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
             Bundle extras = data.getExtras();
-            Bitmap imageBitmap = (Bitmap) extras.get("data");
+            originalBitmap = (Bitmap) extras.get("data");
 
-            // Add visibility logic here
+            // Show image and controls
             ImageView cameraIcon = findViewById(R.id.cameraIcon);
-            scannedImage.setImageBitmap(imageBitmap);
+            scannedImage.setImageBitmap(originalBitmap);
             scannedImage.setVisibility(View.VISIBLE);
             cameraIcon.setVisibility(View.GONE);
-
-            recognizeText(imageBitmap);
+            editControls.setVisibility(View.VISIBLE);
         }
+    }
+
+    private void rotateImage() {
+        rotationAngle = (rotationAngle + 90) % 360;
+
+        // Create a new matrix for rotation
+        Matrix matrix = new Matrix();
+        matrix.postRotate(rotationAngle);
+
+        // Create a new rotated bitmap
+        Bitmap rotatedBitmap = Bitmap.createBitmap(
+                originalBitmap,
+                0,
+                0,
+                originalBitmap.getWidth(),
+                originalBitmap.getHeight(),
+                matrix,
+                true
+        );
+
+        // Update the ImageView with the rotated bitmap
+        scannedImage.setRotation(0);
+        scannedImage.setImageBitmap(rotatedBitmap);
+
+        // If cropping is active, update the crop bounds
+        if (isCropping) {
+            // Wait for the image layout to be updated
+            scannedImage.post(() -> {
+                // Get the new image bounds
+                float[] matrixValues = new float[9];
+                scannedImage.getImageMatrix().getValues(matrixValues);
+                float scaleX = matrixValues[Matrix.MSCALE_X];
+                float scaleY = matrixValues[Matrix.MSCALE_Y];
+                float transX = matrixValues[Matrix.MTRANS_X];
+                float transY = matrixValues[Matrix.MTRANS_Y];
+
+                // Calculate new dimensions
+                float drawableWidth = rotatedBitmap.getWidth() * scaleX;
+                float drawableHeight = rotatedBitmap.getHeight() * scaleY;
+
+                // Update crop rectangle to match new image bounds
+                cropRect = new RectF(
+                        transX,
+                        transY,
+                        transX + drawableWidth,
+                        transY + drawableHeight
+                );
+
+                // Update the overlay
+                ((CropOverlayView)cropOverlay).setCropRect(cropRect);
+                cropOverlay.invalidate();
+            });
+        }
+    }
+
+    private void startCropping() {
+        isCropping = true;
+        cropOverlay.setVisibility(View.VISIBLE);
+
+        // Get the current bitmap from ImageView
+        Bitmap currentBitmap = ((BitmapDrawable) scannedImage.getDrawable()).getBitmap();
+
+        // Get the image matrix
+        float[] matrixValues = new float[9];
+        scannedImage.getImageMatrix().getValues(matrixValues);
+        float scaleX = matrixValues[Matrix.MSCALE_X];
+        float scaleY = matrixValues[Matrix.MSCALE_Y];
+        float transX = matrixValues[Matrix.MTRANS_X];
+        float transY = matrixValues[Matrix.MTRANS_Y];
+
+        // Calculate actual dimensions based on current bitmap
+        float drawableWidth = currentBitmap.getWidth() * scaleX;
+        float drawableHeight = currentBitmap.getHeight() * scaleY;
+
+        // Calculate image bounds accounting for current state
+        float imageLeft = transX;
+        float imageTop = transY;
+        float imageRight = imageLeft + drawableWidth;
+        float imageBottom = imageTop + drawableHeight;
+
+        // Initialize crop rectangle to match the actual current image bounds
+        cropRect = new RectF(
+                imageLeft,
+                imageTop,
+                imageRight,
+                imageBottom
+        );
+
+        // Update the overlay
+        ((CropOverlayView)cropOverlay).setCropRect(cropRect);
+        cropOverlay.invalidate();
+    }
+
+    private void updateCropRect(float dx, float dy, float touchX, float touchY) {
+        if (cropRect == null) return;
+
+        // Get current bitmap from ImageView
+        Bitmap currentBitmap = ((BitmapDrawable) scannedImage.getDrawable()).getBitmap();
+
+        // Get current image matrix values
+        float[] matrixValues = new float[9];
+        scannedImage.getImageMatrix().getValues(matrixValues);
+        float scaleX = matrixValues[Matrix.MSCALE_X];
+        float scaleY = matrixValues[Matrix.MSCALE_Y];
+        float transX = matrixValues[Matrix.MTRANS_X];
+        float transY = matrixValues[Matrix.MTRANS_Y];
+
+        // Calculate actual dimensions based on current bitmap
+        float drawableWidth = currentBitmap.getWidth() * scaleX;
+        float drawableHeight = currentBitmap.getHeight() * scaleY;
+
+        // Calculate current image bounds
+        float imageLeft = transX;
+        float imageTop = transY;
+        float imageRight = imageLeft + drawableWidth;
+        float imageBottom = imageTop + drawableHeight;
+
+        // Determine which corner/edge is being dragged
+        boolean isNearLeft = Math.abs(touchX - cropRect.left) < CORNER_TOUCH_THRESHOLD;
+        boolean isNearRight = Math.abs(touchX - cropRect.right) < CORNER_TOUCH_THRESHOLD;
+        boolean isNearTop = Math.abs(touchY - cropRect.top) < CORNER_TOUCH_THRESHOLD;
+        boolean isNearBottom = Math.abs(touchY - cropRect.bottom) < CORNER_TOUCH_THRESHOLD;
+
+        // Update rectangle based on which corner/edge is being dragged
+        float minSize = CORNER_TOUCH_THRESHOLD * 2; // Minimum crop size
+
+        if (isNearLeft && touchX >= imageLeft) {
+            cropRect.left = Math.min(cropRect.right - minSize, Math.max(imageLeft, touchX));
+        }
+        if (isNearRight && touchX <= imageRight) {
+            cropRect.right = Math.max(cropRect.left + minSize, Math.min(imageRight, touchX));
+        }
+        if (isNearTop && touchY >= imageTop) {
+            cropRect.top = Math.min(cropRect.bottom - minSize, Math.max(imageTop, touchY));
+        }
+        if (isNearBottom && touchY <= imageBottom) {
+            cropRect.bottom = Math.max(cropRect.top + minSize, Math.min(imageBottom, touchY));
+        }
+
+        // Ensure crop rect stays within image bounds
+        cropRect.left = Math.max(imageLeft, cropRect.left);
+        cropRect.top = Math.max(imageTop, cropRect.top);
+        cropRect.right = Math.min(imageRight, cropRect.right);
+        cropRect.bottom = Math.min(imageBottom, cropRect.bottom);
+
+        // Update the overlay
+        ((CropOverlayView)cropOverlay).setCropRect(cropRect);
+    }
+
+    private void confirmEdit() {
+        if (originalBitmap == null) return;
+
+        // Get current bitmap from ImageView
+        Bitmap editedBitmap = ((BitmapDrawable)scannedImage.getDrawable()).getBitmap();
+
+        // Apply cropping if active
+        if (isCropping && cropRect != null) {
+            // Get current image matrix
+            float[] matrixValues = new float[9];
+            scannedImage.getImageMatrix().getValues(matrixValues);
+            float scaleX = matrixValues[Matrix.MSCALE_X];
+            float scaleY = matrixValues[Matrix.MSCALE_Y];
+            float transX = matrixValues[Matrix.MTRANS_X];
+            float transY = matrixValues[Matrix.MTRANS_Y];
+
+            // Convert view coordinates to bitmap coordinates
+            int left = Math.max(0, (int)((cropRect.left - transX) / scaleX));
+            int top = Math.max(0, (int)((cropRect.top - transY) / scaleY));
+            int width = (int)((cropRect.right - cropRect.left) / scaleX);
+            int height = (int)((cropRect.bottom - cropRect.top) / scaleY);
+
+            // Ensure dimensions are valid
+            width = Math.min(width, editedBitmap.getWidth() - left);
+            height = Math.min(height, editedBitmap.getHeight() - top);
+
+            if (width > 0 && height > 0) {
+                try {
+                    editedBitmap = Bitmap.createBitmap(editedBitmap, left, top, width, height);
+                } catch (IllegalArgumentException e) {
+                    Toast.makeText(this, "Error cropping image", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+            }
+        }
+
+        // Update UI and process image
+        scannedImage.setImageBitmap(editedBitmap);
+        cropOverlay.setVisibility(View.GONE);
+        editControls.setVisibility(View.GONE);
+        recognizeText(editedBitmap);
+
+        // Reset states
+        rotationAngle = 0;
+        cropRect = null;
+        isCropping = false;
+    }
+
+    private void cancelEdit() {
+        // Reset to original state
+        scannedImage.setImageBitmap(originalBitmap);
+        scannedImage.setRotation(0);
+        cropOverlay.setVisibility(View.GONE);
+        editControls.setVisibility(View.GONE);
+
+        // Reset editing state
+        rotationAngle = 0;
+        cropRect = null;
+        isCropping = false;
     }
 
     private void recognizeText(Bitmap bitmap) {
