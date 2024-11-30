@@ -3,6 +3,7 @@ package com.example.verbix;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
+import android.net.Uri;
 import android.os.Bundle;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -28,6 +29,9 @@ import com.google.mlkit.vision.common.InputImage;
 import com.google.mlkit.vision.text.TextRecognition;
 import com.google.mlkit.vision.text.TextRecognizer;
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
+
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -48,6 +52,7 @@ import android.widget.ImageButton;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import androidx.cardview.widget.CardView;
+import androidx.core.content.FileProvider;
 
 public class WritingPatternActivity extends AppCompatActivity {
     private FirebaseFirestore db;
@@ -67,6 +72,7 @@ public class WritingPatternActivity extends AppCompatActivity {
     private ImageButton rotateButton, cropButton;
     private Button confirmButton, cancelButton;
     private Bitmap originalBitmap;
+    private Uri photoUri;
 
 
 
@@ -176,26 +182,73 @@ public class WritingPatternActivity extends AppCompatActivity {
     }
     private void startCamera() {
         Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+
+        // Create file for full-size photo
+        File photoFile = null;
         try {
+            File storageDir = new File(getCacheDir(), "images");
+            storageDir.mkdirs();
+            photoFile = File.createTempFile(
+                    "JPEG_" + System.currentTimeMillis() + "_",
+                    ".jpg",
+                    storageDir
+            );
+        } catch (IOException ex) {
+            Toast.makeText(this, "Error creating image file", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Get URI using FileProvider
+        photoUri = FileProvider.getUriForFile(
+                this,
+                getApplicationContext().getPackageName() + ".provider",
+                photoFile
+        );
+
+        try {
+            takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoUri);
             startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
         } catch (ActivityNotFoundException e) {
             Toast.makeText(this, "Camera not found", Toast.LENGTH_SHORT).show();
         }
     }
 
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
-            Bundle extras = data.getExtras();
-            originalBitmap = (Bitmap) extras.get("data");
+            try {
+                // Load full resolution image
+                originalBitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), photoUri);
 
-            // Show image and controls
-            ImageView cameraIcon = findViewById(R.id.cameraIcon);
-            scannedImage.setImageBitmap(originalBitmap);
-            scannedImage.setVisibility(View.VISIBLE);
-            cameraIcon.setVisibility(View.GONE);
-            editControls.setVisibility(View.VISIBLE);
+                // Scale down if too large
+                if (originalBitmap.getWidth() > 2048 || originalBitmap.getHeight() > 2048) {
+                    float scale = Math.min(
+                            2048f / originalBitmap.getWidth(),
+                            2048f / originalBitmap.getHeight()
+                    );
+                    Matrix matrix = new Matrix();
+                    matrix.postScale(scale, scale);
+                    originalBitmap = Bitmap.createBitmap(
+                            originalBitmap,
+                            0, 0,
+                            originalBitmap.getWidth(),
+                            originalBitmap.getHeight(),
+                            matrix,
+                            true
+                    );
+                }
+
+                // Show image and controls
+                ImageView cameraIcon = findViewById(R.id.cameraIcon);
+                scannedImage.setImageBitmap(originalBitmap);
+                scannedImage.setVisibility(View.VISIBLE);
+                cameraIcon.setVisibility(View.GONE);
+                editControls.setVisibility(View.VISIBLE);
+            } catch (IOException e) {
+                Toast.makeText(this, "Error loading image", Toast.LENGTH_SHORT).show();
+            }
         }
     }
 
