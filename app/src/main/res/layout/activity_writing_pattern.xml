@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:scrollbars="vertical"
     android:fadeScrollbars="false"
     android:scrollbarStyle="outsideOverlay"
@@ -16,40 +17,30 @@
         android:padding="16dp"
         tools:context=".WritingPatternActivity">
 
-        <TextView
-            android:id="@+id/instructionText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Write this paragraph:"
-            android:textSize="18sp"
-            android:textColor="@color/textcolor"
-            android:layout_marginBottom="16dp"/>
-
-        <TextView
-            android:id="@+id/paragraphText"
+        <androidx.cardview.widget.CardView
+            android:id="@+id/paragraphCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_below="@id/instructionText"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:textColor="@color/textcolor"
-            android:layout_marginBottom="24dp"/>
+            app:cardElevation="4dp"
+            app:cardCornerRadius="8dp"
+            app:cardBackgroundColor="#EEEEEE"
+            android:layout_marginBottom="16dp">
 
-        <Button
-            android:id="@+id/scanButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Scan Your Writing"
-            android:layout_below="@id/paragraphText"
-            android:backgroundTint="@color/buttoncolor"
-            android:textColor="@color/buttontext"/>
+            <TextView
+                android:id="@+id/paragraphText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="16dp"
+                android:textSize="18sp"
+                android:textColor="@color/textcolor"/>
+        </androidx.cardview.widget.CardView>
+
 
         <FrameLayout
-            android:id="@+id/imageContainer"
+            android:id="@+id/scanContainer"
             android:layout_width="match_parent"
             android:layout_height="200dp"
-            android:layout_below="@id/scanButton"
-            android:layout_marginTop="16dp"
+            android:layout_below="@id/paragraphCard"
             android:background="#E8E8E8">
 
             <ImageView
@@ -72,7 +63,7 @@
             android:id="@+id/resultText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_below="@id/imageContainer"
+            android:layout_below="@id/scanContainer"
             android:padding="16dp"
             android:textSize="16sp"
             android:textColor="@color/textcolor"

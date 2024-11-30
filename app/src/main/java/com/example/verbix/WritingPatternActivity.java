@@ -18,6 +18,7 @@ import android.text.style.StyleSpan;
 import android.text.style.UnderlineSpan;
 import android.util.Log;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -42,7 +43,7 @@ public class WritingPatternActivity extends AppCompatActivity {
     private FirebaseFirestore db;
     private TextView paragraphText, resultText;
     private ImageView scannedImage;
-    private Button scanButton;
+    private FrameLayout scanButton;
     private static final int REQUEST_IMAGE_CAPTURE = 1;
 
     @Override
@@ -61,7 +62,7 @@ public class WritingPatternActivity extends AppCompatActivity {
         paragraphText = findViewById(R.id.paragraphText);
         resultText = findViewById(R.id.resultText);
         scannedImage = findViewById(R.id.scannedImage);
-        scanButton = findViewById(R.id.scanButton);
+        scanButton = findViewById(R.id.scanContainer);
         ImageView cameraIcon = findViewById(R.id.cameraIcon);
         scannedImage.setVisibility(View.GONE);
         cameraIcon.setVisibility(View.VISIBLE);
